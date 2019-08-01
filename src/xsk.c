@@ -488,27 +488,37 @@ static int xsk_setup_xdp_prog(struct xsk_socket *xsk)
 
 	err = bpf_get_link_xdp_id(xsk->ifindex, &prog_id,
 				  xsk->config.xdp_flags);
-	if (err)
+	if (err) {
+		pr_warning("bpf_get_link_xdp_id failed\n");
 		return err;
+	}
 
 	if (!prog_id) {
 		err = xsk_create_bpf_maps(xsk);
-		if (err)
+		if (err) {
+			pr_warning("xsk_create_bpf_maps failed\n");
 			return err;
+		}
 
 		err = xsk_load_xdp_prog(xsk);
-		if (err)
+		if (err) {
+			pr_warning("xsk_load_xdp_prog failed\n");
 			goto out_maps;
+		}
 	} else {
 		xsk->prog_fd = bpf_prog_get_fd_by_id(prog_id);
 		err = xsk_lookup_bpf_maps(xsk);
-		if (err)
+		if (err) {
+			pr_warning("xsk_lookup_bpf_maps failed\n");
 			goto out_load;
+		}
 	}
 
 	err = xsk_set_bpf_maps(xsk);
-	if (err)
+	if (err) {
+		pr_warning("xsk_set_bpf_maps failed\n");
 		goto out_load;
+	}
 
 	return 0;
 
@@ -643,13 +653,17 @@ int xsk_socket__create(struct xsk_socket **xsk_ptr, const char *ifname,
 		goto out_mmap_tx;
 	}
 
+	pr_info("bind xsk success\n");
 	xsk->qidconf_map_fd = -1;
 	xsk->xsks_map_fd = -1;
 
 	if (!(xsk->config.libbpf_flags & XSK_LIBBPF_FLAGS__INHIBIT_PROG_LOAD)) {
+		pr_warning("setup xdp prog from xsk_socket__create\n");
 		err = xsk_setup_xdp_prog(xsk);
-		if (err)
+		if (err) {
+			pr_warning("xsk_socket__create failed %s\n", strerror(errno));
 			goto out_mmap_tx;
+		}
 	}
 
 	*xsk_ptr = xsk;
